@@ -1,9 +1,86 @@
 ﻿@page "/"
 
-<PageTitle>Index</PageTitle>
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
 
-<h1>Hello, world!</h1>
+<PageTitle>Chat - SignalR</PageTitle>
 
-Welcome to your new app.
+<div class="row mb-2">
+    <div class="col-md-4">
+        <label>Nome do usuário:</label>
+        <input type="text" class="form-control" @bind="nomeUsuario" />
+    </div>
+</div>
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+<div class="row mb-2">
+    <div class="col-md-4">
+        <label>Mensagem:</label>
+        <textarea class="form-control" @bind="mensagem"></textarea>
+    </div>
+</div>
+
+<div class="row mb-2">
+    <div class="col-md-4">
+        <button class="btn btn-primary" @onclick="EnviarMensagem" disabled="@(!IsConnected)">
+            Enviar Mensagem
+        </button>
+    </div>
+</div>
+
+<div class="row mb-2">
+    <div class="col-md-12">
+        <ul>
+            @foreach(var item in mensagens)
+            {
+                <li>@item</li>
+            }
+        </ul>
+    </div>
+</div>
+
+@code {
+
+    private string? nomeUsuario;
+    private string? mensagem;
+
+    private HubConnection? hubConnection;
+
+    private List<string> mensagens = new List<string>();
+
+    //método executado quando o componente é aberto
+    protected override async Task OnInitializedAsync()
+    {
+        //conectando no Hub do SignalR
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
+            .Build();
+
+        //ouvindo as mensagens recebidas pelo Hub
+        hubConnection.On<string, string>("ReceiveMessage", (nomeUsuario, mensagem) =>
+        {
+            var texto = $"{nomeUsuario} enviou a mensagem: {mensagem}";
+            mensagens.Add(texto);
+            InvokeAsync(StateHasChanged);
+        });
+
+        //inicando o serviço do hub
+        await hubConnection.StartAsync();
+    }
+
+    //método para verificar se estamos conectados no Hub
+    public bool IsConnected
+    {
+        get => hubConnection?.State == HubConnectionState.Connected;
+    }
+
+    //método para enviar mensagem para o Hub
+    private async Task EnviarMensagem()
+    {
+        if(hubConnection is not null)
+        {
+            //enviando uma mensagem para o ChatHub (SendMessage)
+            await hubConnection.SendAsync("SendMessage", nomeUsuario, mensagem);
+        }
+    }
+
+}

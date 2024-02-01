@@ -1,13 +1,18 @@
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
-using SignalRExemplo1.Data;
+using Microsoft.AspNetCore.ResponseCompression;
+using SignalRExemplo1.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
-builder.Services.AddSingleton<WeatherForecastService>();
+
+//configurando o Compression Middleware
+builder.Services.AddResponseCompression(options =>
+{
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+    new[] { "application/octet-stream" });
+});
 
 var app = builder.Build();
 
@@ -17,6 +22,11 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");
 }
 
+//habilitar o compression
+app.UseResponseCompression();
+
+//registrar os Hubs
+app.MapHub<ChatHub>("/chathub");
 
 app.UseStaticFiles();
 
